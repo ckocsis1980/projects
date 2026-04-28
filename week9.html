@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Health Insurance Claim Summary</title>
+
+  <style>
+    /* ── Reset & base ── */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background-color: #eaf2fb;   /* light blue page background */
+      color: #1a2b3c;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Top navigation bar ── */
+    header {
+      width: 100%;
+      background-color: #0d47a1;   /* deep blue */
+      color: #ffffff;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    }
+
+    /* SVG shield icon used as a simple logo */
+    header svg {
+      flex-shrink: 0;
+    }
+
+    header h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    header p.tagline {
+      font-size: 0.75rem;
+      opacity: 0.75;
+      margin-top: 2px;
+    }
+
+    /* ── Main content area ── */
+    main {
+      width: 100%;
+      max-width: 780px;
+      padding: 36px 20px 60px;
+    }
+
+    /* ── Breadcrumb / page title row ── */
+    .page-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 24px;
+    }
+
+    .page-title h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #0d47a1;
+    }
+
+    .page-title span.subtitle {
+      font-size: 0.82rem;
+      color: #5a7a99;
+    }
+
+    /* ── Claim card ── */
+    .claim-card {
+      background: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 3px 14px rgba(13,71,161,0.12);
+      overflow: hidden;   /* keeps rounded corners on child elements */
+    }
+
+    /* Colored top bar on the card */
+    .claim-card-header {
+      background: linear-gradient(135deg, #1565c0, #1e88e5);
+      color: #ffffff;
+      padding: 18px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .claim-card-header h3 {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .claim-card-header p {
+      font-size: 0.82rem;
+      opacity: 0.85;
+      margin-top: 3px;
+    }
+
+    /* ── Status badge ── */
+    .badge {
+      display: inline-block;
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+    }
+
+    /* Green badge for approved / paid status */
+    .badge-approved {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+      border: 1px solid #a5d6a7;
+    }
+
+    /* Red badge for denied status */
+    .badge-denied {
+      background-color: #fdecea;
+      color: #c62828;
+      border: 1px solid #ef9a9a;
+    }
+
+    /* ── Two-column grid for claim fields ── */
+    .claim-body {
+      padding: 28px;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;   /* two equal columns */
+      gap: 20px 32px;
+    }
+
+    /* On narrow screens collapse to single column */
+    @media (max-width: 520px) {
+      .field-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Individual labeled field */
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .field label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: #5a7a99;   /* muted blue-grey for labels */
+    }
+
+    .field .value {
+      font-size: 0.97rem;
+      font-weight: 500;
+      color: #1a2b3c;
+    }
+
+    /* Slightly larger text for monetary values */
+    .field .value.amount {
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    /* ── Divider between field grid and financial summary ── */
+    .divider {
+      border: none;
+      border-top: 1px solid #dde8f5;
+      margin: 24px 0;
+    }
+
+    /* ── Financial summary row ── */
+    .financial-summary {
+      background-color: #f0f6ff;   /* very light blue tint */
+      border-radius: 8px;
+      padding: 18px 22px;
+      display: flex;
+      justify-content: space-around;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .summary-item {
+      text-align: center;
+    }
+
+    .summary-item .s-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      color: #5a7a99;
+      margin-bottom: 6px;
+    }
+
+    .summary-item .s-value {
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+
+    /* Color-coded amounts */
+    .s-value.total   { color: #1565c0; }
+    .s-value.insurer { color: #2e7d32; }
+    .s-value.patient { color: #e65100; }
+
+    /* ── Footer note inside the card ── */
+    .card-footer-note {
+      margin-top: 22px;
+      font-size: 0.75rem;
+      color: #7a9bb5;
+      text-align: center;
+    }
+
+    /* ── Page footer ── */
+    footer {
+      margin-top: auto;
+      padding: 18px;
+      font-size: 0.73rem;
+      color: #7a9bb5;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ═══════════════════════════════════════
+       HEADER / NAV BAR
+       Displays the application name and logo.
+  ════════════════════════════════════════ -->
+  <header>
+    <!-- Simple inline SVG shield icon acting as a health-plan logo -->
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
+         xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M12 2L3 6v6c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V6L12 2z"
+            fill="rgba(255,255,255,0.2)" stroke="#ffffff" stroke-width="1.5"/>
+      <!-- White cross symbol on the shield -->
+      <line x1="12" y1="8" x2="12" y2="16" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+      <line x1="8"  y1="12" x2="16" y2="12" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+
+    <div>
+      <h1>BlueStar Health Plan</h1>
+      <p class="tagline">Member Claims Portal</p>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════
+       MAIN CONTENT
+       Contains the single claim summary card.
+  ════════════════════════════════════════ -->
+  <main>
+
+    <!-- Page title row with a subtitle showing claim count -->
+    <div class="page-title">
+      <h2>Claim Summary</h2>
+      <span class="subtitle">Showing 1 of 1 claim</span>
+    </div>
+
+    <!-- ─────────────────────────────────────
+         CLAIM CARD
+         All claim data lives inside this card.
+    ────────────────────────────────────── -->
+    <article class="claim-card" aria-label="Claim summary card">
+
+      <!-- Card header: claim ID, submission date, and status badge -->
+      <div class="claim-card-header">
+        <div>
+          <h3>Claim #CLM-2024-00847</h3>
+          <p>Submitted: March 14, 2024 &nbsp;|&nbsp; Processed: March 21, 2024</p>
+        </div>
+        <!-- Status badge — change the class and text to reflect other statuses -->
+        <span class="badge badge-denied">Denied</span>
+      </div>
+
+      <!-- Card body: labeled field grid + financial summary -->
+      <div class="claim-body">
+
+        <!-- ── Patient & claim detail fields ── -->
+        <div class="field-grid">
+
+          <!-- Claim ID field -->
+          <div class="field">
+            <label>Claim ID</label>
+            <span class="value">CLM-2024-00847</span>
+          </div>
+
+          <!-- Claim status (also shown as a badge above, repeated here for detail) -->
+          <div class="field">
+            <label>Status</label>
+            <span class="value">Denied</span>
+          </div>
+
+          <!-- Patient full name -->
+          <div class="field">
+            <label>Patient Name</label>
+            <span class="value">Kocsis, Craig S.</span>
+          </div>
+
+          <!-- Date of birth -->
+          <div class="field">
+            <label>Date of Birth</label>
+            <span class="value">September 3, 1978</span>
+          </div>
+
+          <!-- Service / procedure description -->
+          <div class="field">
+            <label>Service Description</label>
+            <span class="value">Office Visit – Specialist (CPT 99214)</span>
+          </div>
+
+          <!-- Date of service -->
+          <div class="field">
+            <label>Date of Service</label>
+            <span class="value">March 10, 2024</span>
+          </div>
+
+          <!-- Provider name -->
+          <div class="field">
+            <label>Provider</label>
+            <span class="value">Riverside Medical Group</span>
+          </div>
+
+          <!-- Member ID number -->
+          <div class="field">
+            <label>Member ID</label>
+            <span class="value">BSH-778-4421-MJ</span>
+          </div>
+
+        </div>
+        <!-- /field-grid -->
+
+        <!-- Visual divider between the detail fields and the financial summary -->
+        <hr class="divider" />
+
+        <!-- ── Financial breakdown summary ──
+             Three key dollar amounts displayed prominently.
+        -->
+        <div class="financial-summary">
+
+          <!-- Total billed amount -->
+          <div class="summary-item">
+            <div class="s-label">Claim Amount</div>
+            <div class="s-value total">$420.00</div>
+          </div>
+
+          <!-- Amount the insurance company covered -->
+          <div class="summary-item">
+            <div class="s-label">Insurance Paid</div>
+            <div class="s-value insurer">$336.00</div>
+          </div>
+
+          <!-- Remaining balance owed by the patient -->
+          <div class="summary-item">
+            <div class="s-label">Patient Responsibility</div>
+            <div class="s-value patient">$84.00</div>
+          </div>
+
+        </div>
+        <!-- /financial-summary -->
+
+        <!-- Informational footnote inside the card -->
+        <p class="card-footer-note">
+          Patient responsibility includes applicable copay and coinsurance.
+          Contact member services at 1-800-555-0199 with questions.
+        </p>
+
+      </div>
+      <!-- /claim-body -->
+
+    </article>
+    <!-- /claim-card -->
+
+  </main>
+
+  <!-- ═══════════════════════════════════════
+       PAGE FOOTER
+  ════════════════════════════════════════ -->
+  <footer>
+    &copy; 2024 BlueStar Health Plan &mdash; All rights reserved &nbsp;|&nbsp;
+    HIPAA compliant &nbsp;|&nbsp; Privacy Policy &nbsp;|&nbsp; Terms of Use
+  </footer>
+
+</body>
+</html>
