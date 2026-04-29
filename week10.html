@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claims Evaluator</title>
+
+  <style>
+    /* ── Reset & base ── */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background-color: #eaf2fb;
+      color: #1a2b3c;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Top navigation bar ── */
+    header {
+      width: 100%;
+      background-color: #0d47a1;
+      color: #ffffff;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    }
+
+    header svg {
+      flex-shrink: 0;
+    }
+
+    header h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    header p.tagline {
+      font-size: 0.75rem;
+      opacity: 0.75;
+      margin-top: 2px;
+    }
+
+    /* ── Main content area ── */
+    main {
+      width: 100%;
+      max-width: 780px;
+      padding: 36px 20px 60px;
+    }
+
+    /* ── Page title row ── */
+    .page-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 24px;
+    }
+
+    .page-title h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #0d47a1;
+    }
+
+    .page-title span.subtitle {
+      font-size: 0.82rem;
+      color: #5a7a99;
+    }
+
+    /* ── Evaluator card ── */
+    .claim-card {
+      background: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 3px 14px rgba(13,71,161,0.12);
+      overflow: hidden;
+    }
+
+    .claim-card-header {
+      background: linear-gradient(135deg, #1565c0, #1e88e5);
+      color: #ffffff;
+      padding: 18px 28px;
+    }
+
+    .claim-card-header h3 {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .claim-card-header p {
+      font-size: 0.82rem;
+      opacity: 0.85;
+      margin-top: 3px;
+    }
+
+    /* ── Form inside the card ── */
+    .claim-body {
+      padding: 28px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px 32px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 520px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-field label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: #5a7a99;
+    }
+
+    .form-field input,
+    .form-field select {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 0.97rem;
+      color: #1a2b3c;
+      background-color: #f0f6ff;
+      border: 1px solid #b0cce8;
+      border-radius: 6px;
+      padding: 10px 12px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-field input:focus,
+    .form-field select:focus {
+      border-color: #1e88e5;
+      box-shadow: 0 0 0 3px rgba(30,136,229,0.15);
+    }
+
+    /* ── Evaluate button ── */
+    .btn-evaluate {
+      display: block;
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, #1565c0, #1e88e5);
+      color: #ffffff;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: opacity 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-evaluate:hover {
+      opacity: 0.9;
+      box-shadow: 0 4px 12px rgba(13,71,161,0.3);
+    }
+
+    .btn-evaluate:active {
+      opacity: 0.8;
+    }
+
+    /* ── Divider ── */
+    .divider {
+      border: none;
+      border-top: 1px solid #dde8f5;
+      margin: 24px 0;
+    }
+
+    /* ── Results section (hidden until evaluated) ── */
+    #results {
+      display: none;
+    }
+
+    .result-box {
+      border-radius: 8px;
+      padding: 22px 26px;
+      text-align: center;
+    }
+
+    .result-box .result-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      opacity: 0.75;
+    }
+
+    .result-box .result-value {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    .result-box .result-detail {
+      font-size: 0.82rem;
+      margin-top: 8px;
+      opacity: 0.8;
+    }
+
+    /* Result color themes */
+    .result-denied {
+      background-color: #fdecea;
+      border: 2px solid #ef9a9a;
+      color: #c62828;
+    }
+
+    .result-high-value {
+      background-color: #fff3e0;
+      border: 2px solid #ffcc80;
+      color: #e65100;
+    }
+
+    .result-standard {
+      background-color: #e8f5e9;
+      border: 2px solid #a5d6a7;
+      color: #2e7d32;
+    }
+
+    /* ── Footer note ── */
+    .card-footer-note {
+      margin-top: 22px;
+      font-size: 0.75rem;
+      color: #7a9bb5;
+      text-align: center;
+    }
+
+    /* ── Page footer ── */
+    footer {
+      margin-top: auto;
+      padding: 18px;
+      font-size: 0.73rem;
+      color: #7a9bb5;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ═══════════════════════════════════════
+       HEADER / NAV BAR
+  ════════════════════════════════════════ -->
+  <header>
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
+         xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M12 2L3 6v6c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V6L12 2z"
+            fill="rgba(255,255,255,0.2)" stroke="#ffffff" stroke-width="1.5"/>
+      <line x1="12" y1="8" x2="12" y2="16" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+      <line x1="8"  y1="12" x2="16" y2="12" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+
+    <div>
+      <h1>BlueStar Health Plan</h1>
+      <p class="tagline">Member Claims Portal</p>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════
+       MAIN CONTENT
+  ════════════════════════════════════════ -->
+  <main>
+
+    <div class="page-title">
+      <h2>Claims Evaluator</h2>
+      <span class="subtitle">Week 10 &mdash; Interactive Evaluation</span>
+    </div>
+
+    <article class="claim-card" aria-label="Claims evaluator card">
+
+      <div class="claim-card-header">
+        <h3>Evaluate a Claim</h3>
+        <p>Enter claim details below and click Evaluate Claim to see the result.</p>
+      </div>
+
+      <div class="claim-body">
+
+        <!-- Input form -->
+        <div class="form-grid">
+
+          <div class="form-field">
+            <label for="claimAmount">Claim Amount ($)</label>
+            <input
+              type="number"
+              id="claimAmount"
+              placeholder="e.g. 1500.00"
+              min="0"
+              step="0.01"
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="claimStatus">Claim Status</label>
+            <select id="claimStatus">
+              <option value="" disabled selected>-- Select a status --</option>
+              <option value="Approved">Approved</option>
+              <option value="Denied">Denied</option>
+              <option value="Pending">Pending</option>
+            </select>
+          </div>
+
+        </div>
+
+        <button class="btn-evaluate" onclick="evaluateClaim()">Evaluate Claim</button>
+
+        <!-- Results section — hidden until evaluateClaim() runs -->
+        <div id="results">
+          <hr class="divider" />
+          <div id="resultBox" class="result-box">
+            <div class="result-label">Evaluation Result</div>
+            <div id="resultValue" class="result-value"></div>
+            <div id="resultDetail" class="result-detail"></div>
+          </div>
+        </div>
+
+        <p class="card-footer-note">
+          Claims over $1,000 are flagged as high value. Denied claims require member review.
+          Contact member services at 1-800-555-0199 with questions.
+        </p>
+
+      </div>
+
+    </article>
+
+  </main>
+
+  <!-- ═══════════════════════════════════════
+       PAGE FOOTER
+  ════════════════════════════════════════ -->
+  <footer>
+    &copy; 2024 BlueStar Health Plan &mdash; All rights reserved &nbsp;|&nbsp;
+    HIPAA compliant &nbsp;|&nbsp; Privacy Policy &nbsp;|&nbsp; Terms of Use
+  </footer>
+
+  <script>
+    // evaluateClaim runs when the user clicks "Evaluate Claim".
+    // It reads the two inputs, applies business rules, and updates the result box.
+    function evaluateClaim() {
+
+      // Grab the raw values from both form controls
+      var amountInput = document.getElementById('claimAmount').value;
+      var status      = document.getElementById('claimStatus').value;
+
+      // --- Input validation ---
+      // Make sure the user filled in both fields before we try to evaluate
+      if (amountInput === '' || status === '') {
+        alert('Please enter a claim amount and select a claim status.');
+        return; // Stop here so we don't show a result with missing data
+      }
+
+      // Convert the amount string to a floating-point number so we can compare it
+      var amount = parseFloat(amountInput);
+
+      // Reject negative numbers (a claim can't be worth less than $0)
+      if (amount < 0) {
+        alert('Claim amount cannot be negative.');
+        return;
+      }
+
+      // --- Evaluation logic ---
+      // Rule 1: Any Denied claim is DENIED, regardless of amount
+      // Rule 2: Approved or Pending claims over $1,000 are HIGH VALUE
+      // Rule 3: Everything else is a STANDARD CLAIM
+      var resultText, detailText, colorClass;
+
+      if (status === 'Denied') {
+        // The claim was explicitly denied — flag it in red
+        resultText  = 'DENIED';
+        detailText  = 'This claim has been denied. Please contact member services for details.';
+        colorClass  = 'result-denied';
+
+      } else if (amount > 1000) {
+        // Amount exceeds the high-value threshold — flag it in orange for review
+        resultText  = 'HIGH VALUE';
+        detailText  = 'Claim amount exceeds $1,000.00 and requires additional review.';
+        colorClass  = 'result-high-value';
+
+      } else {
+        // Amount is within normal range and the claim is not denied — standard processing
+        resultText  = 'STANDARD CLAIM';
+        detailText  = 'This claim is within normal parameters and will be processed routinely.';
+        colorClass  = 'result-standard';
+      }
+
+      // --- Update the DOM to show the result ---
+
+      // Get references to the elements we need to update
+      var resultBox    = document.getElementById('resultBox');
+      var resultValue  = document.getElementById('resultValue');
+      var resultDetail = document.getElementById('resultDetail');
+
+      // Clear any color class from a previous evaluation, then apply the new one
+      resultBox.className = 'result-box ' + colorClass;
+
+      // Write the result text and the supporting detail sentence
+      resultValue.textContent  = resultText;
+      resultDetail.textContent = detailText;
+
+      // Show the results section (it starts hidden via display:none in CSS)
+      document.getElementById('results').style.display = 'block';
+    }
+  </script>
+
+</body>
+</html>
