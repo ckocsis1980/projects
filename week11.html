@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claims Data Viewer – BlueStar Health Plan</title>
+
+  <style>
+    /* ── Reset & base ── */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background-color: #eaf2fb;
+      color: #1a2b3c;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Header / nav bar (matches week9 & week10) ── */
+    header {
+      width: 100%;
+      background-color: #0d47a1;
+      color: #ffffff;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    }
+
+    header svg { flex-shrink: 0; }
+
+    header h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    header p.tagline {
+      font-size: 0.75rem;
+      opacity: 0.75;
+      margin-top: 2px;
+    }
+
+    /* ── Main content — wider than week9/10 to fit 8-column table ── */
+    main {
+      width: 100%;
+      max-width: 1160px;
+      padding: 36px 20px 60px;
+    }
+
+    /* ── Page title row ── */
+    .page-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 24px;
+    }
+
+    .page-title h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #0d47a1;
+    }
+
+    .page-title span.subtitle {
+      font-size: 0.82rem;
+      color: #5a7a99;
+    }
+
+    /* ── White card wrapper ── */
+    .viewer-card {
+      background: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 3px 14px rgba(13,71,161,0.12);
+      overflow: hidden;
+    }
+
+    /* Blue gradient card header */
+    .viewer-card-header {
+      background: linear-gradient(135deg, #1565c0, #1e88e5);
+      color: #ffffff;
+      padding: 18px 28px;
+    }
+
+    .viewer-card-header h3 {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .viewer-card-header p {
+      font-size: 0.82rem;
+      opacity: 0.85;
+      margin-top: 3px;
+    }
+
+    /* ── Summary bar ── */
+    .summary-bar {
+      background-color: #f0f6ff;
+      border-bottom: 1px solid #dde8f5;
+      padding: 18px 28px;
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+      gap: 12px 20px;
+    }
+
+    .summary-item {
+      text-align: center;
+    }
+
+    .summary-item .s-label {
+      font-size: 0.70rem;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: #5a7a99;
+      margin-bottom: 5px;
+    }
+
+    .summary-item .s-value {
+      font-size: 1.35rem;
+      font-weight: 700;
+    }
+
+    .s-value.total-claims   { color: #1565c0; }
+    .s-value.total-billed   { color: #1565c0; }
+    .s-value.total-denied   { color: #c62828; }
+    .s-value.total-patient  { color: #e65100; }
+
+    /* ── Filter button row ── */
+    .filter-bar {
+      padding: 16px 28px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid #dde8f5;
+    }
+
+    .filter-bar span {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: #5a7a99;
+      align-self: center;
+      margin-right: 4px;
+    }
+
+    .btn-filter {
+      padding: 7px 18px;
+      border-radius: 20px;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 2px solid #b0cce8;
+      background-color: #ffffff;
+      color: #1a2b3c;
+      transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    .btn-filter:hover {
+      background-color: #eaf2fb;
+      border-color: #1e88e5;
+    }
+
+    /* Active filter button: filled blue pill */
+    .btn-filter.active {
+      background-color: #0d47a1;
+      border-color: #0d47a1;
+      color: #ffffff;
+    }
+
+    /* ── Claims table ── */
+    .table-wrap {
+      padding: 0 0 4px;
+      overflow-x: auto;   /* horizontal scroll on small screens */
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+
+    thead tr {
+      background-color: #e3eef9;
+    }
+
+    thead th {
+      padding: 12px 14px;
+      text-align: left;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      color: #1565c0;
+      border-bottom: 2px solid #b0cce8;
+      white-space: nowrap;
+    }
+
+    tbody td {
+      padding: 11px 14px;
+      border-bottom: 1px solid #dde8f5;
+      vertical-align: middle;
+    }
+
+    /* Subtle hover highlight over any visible row */
+    tbody tr:hover td {
+      filter: brightness(0.96);
+    }
+
+    /* ── Row color coding by status ── */
+    tr.row-approved { background-color: #edf7ee; }
+    tr.row-denied   { background-color: #fef4f3; }
+    tr.row-pending  { background-color: #fffde8; }
+
+    /* ── Status badge inside table ── */
+    .badge {
+      display: inline-block;
+      padding: 3px 11px;
+      border-radius: 20px;
+      font-size: 0.73rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .badge-approved {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+      border: 1px solid #a5d6a7;
+    }
+
+    .badge-denied {
+      background-color: #fdecea;
+      color: #c62828;
+      border: 1px solid #ef9a9a;
+    }
+
+    .badge-pending {
+      background-color: #fff8e1;
+      color: #e65100;
+      border: 1px solid #ffcc80;
+    }
+
+    /* Right-align dollar columns */
+    .amount { text-align: right; font-variant-numeric: tabular-nums; }
+
+    /* Muted "no results" message */
+    .no-results {
+      padding: 32px;
+      text-align: center;
+      color: #7a9bb5;
+      font-size: 0.9rem;
+      display: none;
+    }
+
+    /* ── Footer note inside card ── */
+    .card-footer-note {
+      padding: 14px 28px;
+      font-size: 0.75rem;
+      color: #7a9bb5;
+      border-top: 1px solid #dde8f5;
+    }
+
+    /* ── Page footer ── */
+    footer {
+      margin-top: auto;
+      padding: 18px;
+      font-size: 0.73rem;
+      color: #7a9bb5;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ═══════════════════════════════════════
+       HEADER / NAV BAR  (matches week9 & week10)
+  ════════════════════════════════════════ -->
+  <header>
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
+         xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M12 2L3 6v6c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V6L12 2z"
+            fill="rgba(255,255,255,0.2)" stroke="#ffffff" stroke-width="1.5"/>
+      <line x1="12" y1="8" x2="12" y2="16" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+      <line x1="8"  y1="12" x2="16" y2="12" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+
+    <div>
+      <h1>BlueStar Health Plan</h1>
+      <p class="tagline">Member Claims Portal</p>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════
+       MAIN CONTENT
+  ════════════════════════════════════════ -->
+  <main>
+
+    <div class="page-title">
+      <h2>Claims Data Viewer</h2>
+      <span class="subtitle">Week 11 &mdash; Claims Table &amp; Filtering</span>
+    </div>
+
+    <section class="viewer-card" aria-label="Claims data viewer">
+
+      <!-- Card header -->
+      <div class="viewer-card-header">
+        <h3>Member Claims History</h3>
+        <p>Click a filter button to view claims by status. Summary totals update automatically.</p>
+      </div>
+
+      <!-- ── Summary bar ── counts/totals computed by JavaScript on load ── -->
+      <div class="summary-bar">
+
+        <div class="summary-item">
+          <div class="s-label">Total Claims</div>
+          <div id="stat-total-claims" class="s-value total-claims">–</div>
+        </div>
+
+        <div class="summary-item">
+          <div class="s-label">Total Billed</div>
+          <div id="stat-total-billed" class="s-value total-billed">–</div>
+        </div>
+
+        <div class="summary-item">
+          <div class="s-label">Denied Claims</div>
+          <div id="stat-denied" class="s-value total-denied">–</div>
+        </div>
+
+        <div class="summary-item">
+          <div class="s-label">Patient Responsibility</div>
+          <div id="stat-patient" class="s-value total-patient">–</div>
+        </div>
+
+      </div>
+
+      <!-- ── Filter buttons ── data-filter value must match a status string or "All" ── -->
+      <div class="filter-bar" role="group" aria-label="Filter claims by status">
+        <span>Filter:</span>
+        <button class="btn-filter active" data-filter="All"      onclick="filterClaims(this)">All</button>
+        <button class="btn-filter"        data-filter="Approved" onclick="filterClaims(this)">Approved</button>
+        <button class="btn-filter"        data-filter="Denied"   onclick="filterClaims(this)">Denied</button>
+        <button class="btn-filter"        data-filter="Pending"  onclick="filterClaims(this)">Pending</button>
+      </div>
+
+      <!-- ── Claims table ── rows are built and injected by JavaScript ── -->
+      <div class="table-wrap">
+        <table aria-label="Healthcare claims table">
+          <thead>
+            <tr>
+              <th>Claim ID</th>
+              <th>Patient Name</th>
+              <th>Date of Service</th>
+              <th>Provider</th>
+              <th class="amount">Amount</th>
+              <th class="amount">Insurance Paid</th>
+              <th class="amount">Patient Resp.</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="claims-tbody">
+            <!-- Rows injected by renderTable() -->
+          </tbody>
+        </table>
+
+        <!-- Shown when a filtered view has no matching rows -->
+        <p class="no-results" id="no-results">No claims match this filter.</p>
+      </div>
+
+      <p class="card-footer-note">
+        Patient responsibility includes applicable copay and coinsurance.
+        Contact member services at 1-800-555-0199 with questions.
+        &nbsp;|&nbsp; HIPAA compliant.
+      </p>
+
+    </section>
+
+  </main>
+
+  <!-- ═══════════════════════════════════════
+       PAGE FOOTER
+  ════════════════════════════════════════ -->
+  <footer>
+    &copy; 2024 BlueStar Health Plan &mdash; All rights reserved &nbsp;|&nbsp;
+    HIPAA compliant &nbsp;|&nbsp; Privacy Policy &nbsp;|&nbsp; Terms of Use
+  </footer>
+
+
+  <script>
+    // ─────────────────────────────────────────────────────────────
+    // DATA
+    // Each object represents one healthcare claim.
+    // Fields: id, patient, date, provider, amount, insurancePaid,
+    //         patientResp, status ("Approved" | "Denied" | "Pending")
+    // ─────────────────────────────────────────────────────────────
+    var claims = [
+      {
+        id: 'CLM-2024-00847',
+        patient: 'Kocsis, Craig S.',
+        date: '03/10/2024',
+        provider: 'Riverside Medical Group',
+        amount: 420.00,
+        insurancePaid: 336.00,
+        patientResp: 84.00,
+        status: 'Approved'
+      },
+      {
+        id: 'CLM-2024-00901',
+        patient: 'Martinez, Elena R.',
+        date: '03/15/2024',
+        provider: 'Summit Orthopedics',
+        amount: 1850.00,
+        insurancePaid: 0.00,
+        patientResp: 1850.00,
+        status: 'Denied'
+      },
+      {
+        id: 'CLM-2024-00933',
+        patient: 'Thompson, James L.',
+        date: '03/22/2024',
+        provider: 'BlueStar Primary Care',
+        amount: 185.00,
+        insurancePaid: 148.00,
+        patientResp: 37.00,
+        status: 'Approved'
+      },
+      {
+        id: 'CLM-2024-00958',
+        patient: 'Patel, Priya N.',
+        date: '04/01/2024',
+        provider: 'Lakeview Radiology',
+        amount: 640.00,
+        insurancePaid: 512.00,
+        patientResp: 128.00,
+        status: 'Approved'
+      },
+      {
+        id: 'CLM-2024-00972',
+        patient: "O'Brien, Michael T.",
+        date: '04/05/2024',
+        provider: 'Eastside Urgent Care',
+        amount: 310.00,
+        insurancePaid: 0.00,
+        patientResp: 310.00,
+        status: 'Denied'
+      },
+      {
+        id: 'CLM-2024-01004',
+        patient: 'Washington, Sandra K.',
+        date: '04/11/2024',
+        provider: 'Northgate Cardiology',
+        amount: 2200.00,
+        insurancePaid: 1760.00,
+        patientResp: 440.00,
+        status: 'Pending'
+      },
+      {
+        id: 'CLM-2024-01018',
+        patient: 'Chen, David W.',
+        date: '04/14/2024',
+        provider: 'Riverside Medical Group',
+        amount: 90.00,
+        insurancePaid: 72.00,
+        patientResp: 18.00,
+        status: 'Approved'
+      },
+      {
+        id: 'CLM-2024-01031',
+        patient: 'Rodriguez, Carmen L.',
+        date: '04/18/2024',
+        provider: 'Valley Physical Therapy',
+        amount: 750.00,
+        insurancePaid: 600.00,
+        patientResp: 150.00,
+        status: 'Pending'
+      },
+      {
+        id: 'CLM-2024-01045',
+        patient: 'Harrison, Robert B.',
+        date: '04/22/2024',
+        provider: 'Summit Orthopedics',
+        amount: 3400.00,
+        insurancePaid: 0.00,
+        patientResp: 3400.00,
+        status: 'Denied'
+      },
+      {
+        id: 'CLM-2024-01059',
+        patient: 'Nguyen, Lisa M.',
+        date: '04/25/2024',
+        provider: 'BlueStar Primary Care',
+        amount: 220.00,
+        insurancePaid: 176.00,
+        patientResp: 44.00,
+        status: 'Pending'
+      }
+    ];
+
+    // ─────────────────────────────────────────────────────────────
+    // HELPER: formatCurrency
+    // Converts a number like 1234.5 into a formatted string "$1,234.50".
+    // Using toLocaleString with the 'en-US' locale handles comma separators
+    // and always produces exactly two decimal places.
+    // ─────────────────────────────────────────────────────────────
+    function formatCurrency(value) {
+      return '$' + value.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // renderTable(filteredClaims)
+    // Accepts an array of claim objects (could be the full list or
+    // a filtered subset) and rebuilds the <tbody> from scratch.
+    //
+    // Why rebuild each time instead of show/hide rows?
+    // Simpler code: we never need to track which rows exist; we just
+    // clear and repopulate.  For 10 rows this is instant.
+    // ─────────────────────────────────────────────────────────────
+    function renderTable(filteredClaims) {
+      var tbody      = document.getElementById('claims-tbody');
+      var noResults  = document.getElementById('no-results');
+
+      // Clear whatever rows are already in the table body
+      tbody.innerHTML = '';
+
+      // If the filtered list is empty, show the "no results" message and stop
+      if (filteredClaims.length === 0) {
+        noResults.style.display = 'block';
+        return;
+      }
+
+      // Otherwise hide the "no results" message
+      noResults.style.display = 'none';
+
+      // Loop through each claim and build one <tr> per claim
+      for (var i = 0; i < filteredClaims.length; i++) {
+        var c = filteredClaims[i];
+
+        // Pick the CSS row class and badge class based on status
+        var rowClass, badgeClass;
+        if (c.status === 'Approved') {
+          rowClass   = 'row-approved';
+          badgeClass = 'badge-approved';
+        } else if (c.status === 'Denied') {
+          rowClass   = 'row-denied';
+          badgeClass = 'badge-denied';
+        } else {
+          // "Pending" — also the fallback for any unexpected status value
+          rowClass   = 'row-pending';
+          badgeClass = 'badge-pending';
+        }
+
+        // Build the table row using a template string.
+        // Each <td> maps to one column header in the same order.
+        var row = document.createElement('tr');
+        row.className = rowClass;
+
+        row.innerHTML =
+          '<td>' + c.id + '</td>' +
+          '<td>' + c.patient + '</td>' +
+          '<td>' + c.date + '</td>' +
+          '<td>' + c.provider + '</td>' +
+          '<td class="amount">' + formatCurrency(c.amount) + '</td>' +
+          '<td class="amount">' + formatCurrency(c.insurancePaid) + '</td>' +
+          '<td class="amount">' + formatCurrency(c.patientResp) + '</td>' +
+          '<td><span class="badge ' + badgeClass + '">' + c.status + '</span></td>';
+
+        tbody.appendChild(row);
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // updateSummary(filteredClaims)
+    // Recalculates the four summary bar stats for the currently
+    // visible set of claims and writes them into the DOM.
+    //
+    // The stats always reflect the FILTERED view, so if you click
+    // "Denied" you see only denied-claim totals in the summary bar.
+    // ─────────────────────────────────────────────────────────────
+    function updateSummary(filteredClaims) {
+      var totalClaims  = filteredClaims.length;
+      var totalBilled  = 0;
+      var deniedCount  = 0;
+      var totalPatient = 0;
+
+      // Walk the filtered list and accumulate each running total
+      for (var i = 0; i < filteredClaims.length; i++) {
+        var c = filteredClaims[i];
+        totalBilled  += c.amount;
+        totalPatient += c.patientResp;
+        if (c.status === 'Denied') {
+          deniedCount++;
+        }
+      }
+
+      // Write the computed values into their placeholder elements
+      document.getElementById('stat-total-claims').textContent = totalClaims;
+      document.getElementById('stat-total-billed').textContent = formatCurrency(totalBilled);
+      document.getElementById('stat-denied').textContent       = deniedCount;
+      document.getElementById('stat-patient').textContent      = formatCurrency(totalPatient);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // filterClaims(buttonEl)
+    // Called by each filter button's onclick.  Reads the button's
+    // data-filter attribute ("All", "Approved", "Denied", "Pending"),
+    // filters the master claims array, then re-renders both the
+    // table and the summary bar.
+    // ─────────────────────────────────────────────────────────────
+    function filterClaims(buttonEl) {
+      // Mark the clicked button as active and remove active from siblings
+      var allButtons = document.querySelectorAll('.btn-filter');
+      for (var i = 0; i < allButtons.length; i++) {
+        allButtons[i].classList.remove('active');
+      }
+      buttonEl.classList.add('active');
+
+      // Read the filter value from the button's data-filter attribute
+      var filter = buttonEl.getAttribute('data-filter');
+
+      // Build the subset of claims that match the chosen filter.
+      // "All" means no filtering — return the full list.
+      var filtered;
+      if (filter === 'All') {
+        filtered = claims;   // show every claim
+      } else {
+        // Array.filter creates a new array containing only
+        // the claims whose status matches the chosen filter string
+        filtered = claims.filter(function(c) {
+          return c.status === filter;
+        });
+      }
+
+      // Re-render both the table and the summary bar with the filtered data
+      renderTable(filtered);
+      updateSummary(filtered);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // INIT — run once when the page loads.
+    // Render the full unfiltered table and populate the summary bar
+    // so the page is never blank on arrival.
+    // ─────────────────────────────────────────────────────────────
+    renderTable(claims);
+    updateSummary(claims);
+  </script>
+
+</body>
+</html>
