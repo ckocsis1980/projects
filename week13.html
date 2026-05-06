@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Week 13 – React Claims Cards | BlueStar Health Plan</title>
+
+  <!--
+    HOW THIS FILE WORKS IN THE BROWSER (no build tools needed)
+    ──────────────────────────────────────────────────────────
+    1. React & ReactDOM are loaded from the unpkg CDN as plain <script> tags.
+       They attach themselves to the global window object (window.React,
+       window.ReactDOM) so our code can use them without any import statements.
+
+    2. Babel Standalone is also loaded from CDN. It intercepts every
+       <script type="text/babel"> block, compiles the JSX inside it to plain
+       JavaScript on the fly inside the browser, then runs the result.
+       This is the same transformation that Create React App does ahead-of-time
+       with a build step — Babel Standalone just does it in real time.
+
+    3. The <div id="root"> below is the "mount point". React takes over that
+       element and renders everything inside it. The rest of the HTML stays as-is.
+
+    NOTE: Babel Standalone is convenient for learning but slow for production —
+    a real app would pre-compile with Vite, Create React App, or Next.js.
+  -->
+
+  <!-- React core library (manages components, props, state, virtual DOM) -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+
+  <!-- ReactDOM renders the virtual DOM into real browser DOM nodes -->
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+  <!-- Babel Standalone compiles JSX syntax in the browser at runtime -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #eaf2fb; }
+  </style>
+</head>
+<body>
+
+  <!-- React mounts here. Everything inside this div is managed by React. -->
+  <div id="root"></div>
+
+  <!--
+    type="text/babel" tells the browser to skip this script tag (browsers don't
+    know "text/babel"). Babel Standalone picks it up, compiles the JSX, and
+    injects the resulting plain JavaScript back into the page.
+  -->
+  <script type="text/babel">
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // WHAT IS A REACT COMPONENT?
+    //
+    // A component is a reusable building block for your UI — like a custom
+    // HTML tag you define yourself. It's a JavaScript function that returns
+    // JSX (HTML-like syntax). Once defined, you reuse it by writing
+    // <ComponentName /> wherever you need it.
+    //
+    // Example: <ClaimCard /> below is a component we define once, then render
+    // once per claim in our list.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // WHAT ARE PROPS?
+    //
+    // "Props" (short for properties) are how you pass data INTO a component
+    // from the outside — like HTML attributes, but for your own components.
+    //
+    // Example: <ClaimCard claimId="CLM-001" patientName="Alice Hart" />
+    //   → inside ClaimCard, claimId === "CLM-001"
+    //   → inside ClaimCard, patientName === "Alice Hart"
+    //
+    // Props flow ONE WAY: parent → child. The child reads them but never
+    // changes them directly. This keeps data flow predictable and easy to
+    // trace through your component tree.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // Sample claims data — in a real app this would come from an API call.
+    const SAMPLE_CLAIMS = [
+      {
+        claimId: "CLM-2024-001",
+        patientName: "Alice Hart",
+        amount: 1250.00,
+        status: "Approved",
+        patientResponsibility: 150.00,
+      },
+      {
+        claimId: "CLM-2024-002",
+        patientName: "Robert Nguyen",
+        amount: 3780.50,
+        status: "Pending",
+        patientResponsibility: 500.00,
+      },
+      {
+        claimId: "CLM-2024-003",
+        patientName: "Sandra Okafor",
+        amount: 620.75,
+        status: "Denied",
+        patientResponsibility: 620.75,
+      },
+      {
+        claimId: "CLM-2024-004",
+        patientName: "James Whitfield",
+        amount: 2100.00,
+        status: "Approved",
+        patientResponsibility: 210.00,
+      },
+      {
+        claimId: "CLM-2024-005",
+        patientName: "Craig Kocsis",
+        amount: 850.00,
+        status: "Approved",
+        patientResponsibility: 85.00,
+      },
+    ];
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // ClaimCard Component
+    //
+    // Receives one claim's data via props and renders a styled card.
+    // Props (passed in by the parent App component):
+    //   claimId               (string) – unique claim identifier
+    //   patientName           (string) – full name of the patient
+    //   amount                (number) – total billed amount in dollars
+    //   status                (string) – "Approved" | "Pending" | "Denied"
+    //   patientResponsibility (number) – amount the patient owes
+    // ─────────────────────────────────────────────────────────────────────────
+    function ClaimCard({ claimId, patientName, amount, status, patientResponsibility }) {
+
+      // Status badge colors — green/yellow/red so status is obvious at a glance.
+      const statusColors = {
+        Approved: { background: "#e8f5e9", color: "#2e7d32", border: "#a5d6a7" },
+        Pending:  { background: "#fff8e1", color: "#f57f17", border: "#ffe082" },
+        Denied:   { background: "#ffebee", color: "#c62828", border: "#ef9a9a" },
+      };
+
+      // Fall back to Pending colors if an unrecognized status is passed in.
+      const badge = statusColors[status] || statusColors.Pending;
+
+      const styles = {
+        card: {
+          backgroundColor: "#ffffff",
+          border: "1px solid #bbdefb",
+          borderRadius: "10px",
+          padding: "24px",
+          boxShadow: "0 2px 8px rgba(13, 71, 161, 0.12)",
+          color: "#1a2b3c",
+        },
+        header: {
+          backgroundColor: "#0d47a1",
+          color: "#ffffff",
+          margin: "-24px -24px 16px -24px",
+          padding: "14px 24px",
+          borderRadius: "10px 10px 0 0",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        },
+        claimId: {
+          fontSize: "13px",
+          fontWeight: "600",
+          letterSpacing: "0.5px",
+        },
+        patientName: {
+          fontSize: "18px",
+          fontWeight: "700",
+          marginBottom: "14px",
+          color: "#0d47a1",
+        },
+        row: {
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: "8px",
+          fontSize: "14px",
+        },
+        label: {
+          color: "#546e7a",
+          fontWeight: "500",
+        },
+        value: {
+          fontWeight: "600",
+          color: "#1a2b3c",
+        },
+        badge: {
+          display: "inline-block",
+          padding: "3px 10px",
+          borderRadius: "12px",
+          fontSize: "12px",
+          fontWeight: "700",
+          backgroundColor: badge.background,
+          color: badge.color,
+          border: `1px solid ${badge.border}`,
+        },
+        divider: {
+          borderTop: "1px solid #e3f0fc",
+          margin: "12px 0",
+        },
+        responsibility: {
+          display: "flex",
+          justifyContent: "space-between",
+          backgroundColor: "#eaf2fb",
+          borderRadius: "6px",
+          padding: "10px 12px",
+          marginTop: "12px",
+        },
+        responsibilityLabel: {
+          fontSize: "13px",
+          color: "#0d47a1",
+          fontWeight: "600",
+        },
+        responsibilityValue: {
+          fontSize: "15px",
+          color: "#0d47a1",
+          fontWeight: "700",
+        },
+      };
+
+      // Format a number as a USD currency string (e.g. 1250 → "$1,250.00")
+      const usd = (n) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+
+      // This JSX is what the component renders to the screen.
+      // The curly-brace {expressions} are where props values get inserted.
+      return (
+        <div style={styles.card}>
+          {/* Card header: dark-blue bar with claim ID and status badge */}
+          <div style={styles.header}>
+            <span style={styles.claimId}>{claimId}</span>
+            <span style={styles.badge}>{status}</span>
+          </div>
+
+          {/* Patient name */}
+          <div style={styles.patientName}>{patientName}</div>
+
+          {/* Total billed amount */}
+          <div style={styles.row}>
+            <span style={styles.label}>Total Billed</span>
+            <span style={styles.value}>{usd(amount)}</span>
+          </div>
+
+          <div style={styles.divider} />
+
+          {/* Patient responsibility highlighted in a blue tray */}
+          <div style={styles.responsibility}>
+            <span style={styles.responsibilityLabel}>Patient Responsibility</span>
+            <span style={styles.responsibilityValue}>{usd(patientResponsibility)}</span>
+          </div>
+        </div>
+      );
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // App Component (root / top-level component)
+    //
+    // This is the first component React renders. It owns the SAMPLE_CLAIMS
+    // data and maps each object to a <ClaimCard />, passing the fields as
+    // props. Standard React pattern: parent holds data, children display it.
+    // ─────────────────────────────────────────────────────────────────────────
+    function App() {
+      const styles = {
+        page: {
+          minHeight: "100vh",
+          backgroundColor: "#eaf2fb",
+          fontFamily: "'Segoe UI', Arial, sans-serif",
+        },
+        header: {
+          backgroundColor: "#0d47a1",
+          color: "#ffffff",
+          padding: "20px 40px",
+        },
+        logo: {
+          fontSize: "22px",
+          fontWeight: "700",
+          letterSpacing: "1px",
+        },
+        subtitle: {
+          fontSize: "13px",
+          opacity: 0.8,
+          marginTop: "4px",
+        },
+        main: {
+          padding: "40px",
+        },
+        heading: {
+          fontSize: "22px",
+          fontWeight: "700",
+          color: "#0d47a1",
+          marginBottom: "6px",
+        },
+        subheading: {
+          fontSize: "14px",
+          color: "#546e7a",
+          marginBottom: "32px",
+        },
+        // CSS Grid: auto-fills columns, each at least 320px wide.
+        // On a wide screen you get multiple columns; on mobile, just one.
+        grid: {
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+          gap: "24px",
+        },
+      };
+
+      return (
+        <div style={styles.page}>
+          {/* Site-wide header */}
+          <header style={styles.header}>
+            <div style={styles.logo}>BlueStar Health Plan</div>
+            <div style={styles.subtitle}>Member Claims Portal</div>
+          </header>
+
+          <main style={styles.main}>
+            <div style={styles.heading}>Recent Claims</div>
+            <div style={styles.subheading}>{SAMPLE_CLAIMS.length} claims found</div>
+
+            {/*
+              .map() turns the SAMPLE_CLAIMS array into an array of JSX elements.
+              Each iteration renders one <ClaimCard /> and passes the claim's
+              fields as individual props.
+
+              The key prop is required on every list item — React uses it
+              internally to track which cards to update, add, or remove when
+              the data changes. Always use a stable unique value like an ID.
+            */}
+            <div style={styles.grid}>
+              {SAMPLE_CLAIMS.map((claim) => (
+                <ClaimCard
+                  key={claim.claimId}
+                  claimId={claim.claimId}
+                  patientName={claim.patientName}
+                  amount={claim.amount}
+                  status={claim.status}
+                  patientResponsibility={claim.patientResponsibility}
+                />
+              ))}
+            </div>
+          </main>
+        </div>
+      );
+    }
+
+    // Mount the App component into the <div id="root"> in the HTML above.
+    // ReactDOM.createRoot is the React 18 API for rendering.
+    // Without this line, React builds the component tree in memory but never
+    // puts anything on screen.
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+
+  </script>
+</body>
+</html>
